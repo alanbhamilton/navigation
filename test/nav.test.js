@@ -9,6 +9,7 @@ const { assert, expect } = chai;
 import { calculateDistance, calculateBearing, normalizeBearing, R } from '../lib/nav.js';
 
 const distanceTolerance = 0.003; // 3%
+const earthCircumference = 2 * Math.PI * R
 
 const tests = [
     // Start at equator, go North (due North)

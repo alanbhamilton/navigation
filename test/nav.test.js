@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { describe, it } from 'node:test';
 import * as chai from 'chai';
 import chaiAlmost from 'chai-almost';
 
@@ -6,38 +6,193 @@ chai.use(chaiAlmost());
 
 const { assert, expect } = chai;
 
-import { calculateDistance, R } from '../lib/nav.js';
+import { calculateDistance, calculateBearing, normalizeBearing, R } from '../lib/nav.js';
 
-// https://en.wikipedia.org/wiki/Haversine_formula
+const distanceTolerance = 0.003; // 3%
 
-test("calculateDistance: white house to eiffel tower", (t) => {
-  // White House in Washington DC (latitude 38.898° N, longitude -77.037° W)
-  // Eiffel Tower in Paris (latitude 48.858° N, longitude 2.294° E)
-  const distanceKM = calculateDistance(38.898, -77.037, 48.858, 2.294);
-  assert.approximately(distanceKM, 6180, 50);
+const tests = [
+    // Start at equator, go North (due North)
+    {
+      name: "Equator North",
+      start: { lat: 0, lon: 0 },
+      end: { lat: 1, lon: 0 },
+      expected: {
+        bearing: 0.00,
+        distance: {
+          value: 111.2,
+          tolerance: 111.2 * distanceTolerance
+        },
+      }
+    },
+    // Start at equator, go East (due East)
+    {
+      name: "Equator East",
+      start: { lat: 0, lon: 0 },
+      end: { lat: 0, lon: 1 },
+      expected: {
+        bearing: 90.00,
+        distance: {
+          value: 111.2,
+          tolerance: 111.2 * distanceTolerance
+        },
+      }
+    },
+    // Go due South near the prime meridian
+    {
+      name: "Go South",
+      start: { lat: 50.0, lon: 0.0 },
+      end: { lat: 49.0, lon: 0.0 },
+      expected: {
+        bearing: 180.0,
+        distance: {
+          value: 111.2,
+          tolerance: 111.2 * distanceTolerance
+        },
+      }
+    },
+    // Go due West near the prime meridian
+    {
+      name: "Go West",
+      start: { lat: 50.0, lon: 0.0 },
+      end: { lat: 50.0, lon: -1.0},
+      expected: {
+        bearing: 270.3830,
+        distance: {
+          value: 71.47,
+          tolerance: 71.47 * distanceTolerance
+        },
+      }
+    },
+    // A specific case with known result from online calculator/formula sites
+    {
+      name: "Kansas City to St Louis (approx)",
+      start: { lat: 39.0997, lon: -94.5786 },
+      end: { lat: 38.6270, lon: -90.1994 },
+      expected: {
+        bearing: 96.51,
+        distance: {
+          value: 382.7,
+          tolerance: 382.7 * distanceTolerance
+        },
+      }
+    },
+    // From https://www.movable-type.co.uk/scripts/latlong.html
+    {
+      name: "Movable Type Scripts",
+      start: { lat: 50.066389, lon: -5.714722 },
+      end: { lat: 58.643889, lon: -3.07 },
+      expected: {
+        bearing: 9.1198,
+        distance: {
+          value: 968.8,
+          tolerance: 968.8 * distanceTolerance
+        },
+      }
+    },
+    // Self
+    {
+      name: "Self (0, 0, 0, 0)",
+      start: { lat: 0, lon: 0 },
+      end: { lat: 0, lon: 0 },
+      expected: {
+        bearing: 0,
+        distance: {
+          value: 0,
+          tolerance: 0
+        },
+      }
+    },
+    {
+      name: "Self (40, -70, 40, -70)",
+      start: { lat: 40, lon: -70 },
+      end: { lat: 40, lon: -70 },
+      expected: {
+        bearing: 0,
+        distance: {
+          value: 0,
+          tolerance: 0
+        },
+      }
+    },
+    // Distance between (0, 0) and (0, 90) should be 1/4 of Earth's circumference
+    {
+      name: "1/4 of Earth's circumference",
+      start: { lat: 0, lon: 0 },
+      end: { lat: 0, lon: 90 },
+      expected: {
+        bearing: 90,
+        distance: {
+          value: (2 * Math.PI * R) / 4,
+          tolerance: (2 * Math.PI * R) / 4 * distanceTolerance
+        },
+      }
+    },
+    // Antipodal Points
+    {
+      name: "Antipodal piont (0, 0, 0, 180)",
+      start: { lat: 0, lon: 0 },
+      end: { lat: 0, lon: 180 },
+      expected: {
+        bearing: 90,
+        distance: {
+          value: (2 * Math.PI * R) / 2,
+          tolerance: (2 * Math.PI * R) / 2 * distanceTolerance
+        },
+      }
+    },
+    {
+      name: "Antipodal piont (90, 0, -90, 0)",
+      start: { lat: 90, lon: 0 },
+      end: { lat: -90, lon: 0 },
+      expected: {
+        bearing: 180,
+        distance: {
+          value: (2 * Math.PI * R) / 2,
+          tolerance: (2 * Math.PI * R) / 2 * distanceTolerance
+        },
+      }
+    },
+  ];
+
+describe('calculateDistance function', () => {
+  const tolerance = 0.1;
+
+  tests.forEach(({ name, start, end, expected }) => {
+    it(name, () => {
+      const result = calculateDistance(start.lat, start.lon, end.lat, end.lon);
+      expect(result).to.be.almost(expected.distance.value, expected.distance.tolerance);
+    });
+  });
 })
 
-test("calculateDistance: london to paris", (t) => {
-  // London (51.5074° N, 0.1278° W) and Paris (48.8566° N, 2.3522° E)
-  // Expected distance ~ 343 km (using 6371 km radius) (1.0 km delta for approximation)
-  const distanceKM = calculateDistance(51.5074, 0.1278, 48.8566, 2.3522);
-  assert.approximately(distanceKM, 343, 50, 1.0);
+
+describe('calculateBearing function', () => {
+  const tolerance = 0.1;
+
+  tests.forEach(({ name, start, end, expected }) => {
+    it(name, () => {
+      const result = calculateBearing(start.lat, start.lon, end.lat, end.lon);
+      expect(result).to.be.almost(expected.bearing, tolerance);
+    });
+  });
 })
 
-test("calculateDistance: self", (t) => {
-  assert.equal(calculateDistance(0, 0, 0, 0), 0);
-  assert.equal(calculateDistance(40, -70, 40, -70), 0);
-})
-
-test("calculateDistance: equator points", (t) => {
-  // Distance between (0, 0) and (0, 90) should be 1/4 of Earth's circumference
-  const expected = (2 * Math.PI * R) / 4
-  expect(calculateDistance(0, 0, 0, 90)).to.almost.equal(expected, 0.1);
-})
-
-test("calculateDistance: antipodal points", (t) => {
-  // Distance between (0, 0) and (0, 180) should be 1/2 of Earth's circumference
-  const expected = (2 * Math.PI * R) / 2
-  expect(calculateDistance(0, 0, 0, 180)).to.almost.equal(expected, 0.1);
-  expect(calculateDistance(90, 0, -90, 0)).to.almost.equal(expected, 0.1);
+test("normalizeBearing", (t) => {
+  const tests = [
+    { input: 0, expected: 0 },
+    { input: 90, expected: 90 },
+    { input: 180, expected: 180 },
+    { input: 270, expected: 270 },
+    { input: 360, expected: 0 },
+    { input: 361, expected: 1 },
+    { input: -10, expected: 350 }, // Negative input test
+    { input: -90, expected: 270 },
+    { input: -180, expected: 180 },
+    { input: -360, expected: 0 },
+    { input: 720, expected: 0 },
+    { input: -730, expected: 350 }, // Large negative input test
+  ];
+  tests.forEach(({ input, expected }) => {
+    assert.equal(normalizeBearing(input), expected);
+  });
 })

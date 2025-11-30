@@ -123,8 +123,8 @@ const tests = [
       expected: {
         bearing: 90,
         distance: {
-          value: (2 * Math.PI * R) / 4,
-          tolerance: (2 * Math.PI * R) / 4 * distanceTolerance
+          value: earthCircumference / 4,
+          tolerance: earthCircumference / 4 * distanceTolerance
         },
       }
     },
@@ -136,8 +136,8 @@ const tests = [
       expected: {
         bearing: 90,
         distance: {
-          value: (2 * Math.PI * R) / 2,
-          tolerance: (2 * Math.PI * R) / 2 * distanceTolerance
+          value: earthCircumference / 2,
+          tolerance: earthCircumference / 2 * distanceTolerance
         },
       }
     },
@@ -148,8 +148,8 @@ const tests = [
       expected: {
         bearing: 180,
         distance: {
-          value: (2 * Math.PI * R) / 2,
-          tolerance: (2 * Math.PI * R) / 2 * distanceTolerance
+          value: earthCircumference / 2,
+          tolerance: earthCircumference / 2 * distanceTolerance
         },
       }
     },

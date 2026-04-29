@@ -1,4 +1,4 @@
-import { calculateBearing, calculateDistance, calculateCrossTrackError } from "./lib/nav.js";
+import { calculateBearing, calculateDistance, calculateCrossTrack } from "./lib/nav.js";
 
 // Example Locations
 const locations = [
@@ -52,7 +52,7 @@ const scenarios = [
 ];
 
 scenarios.forEach((scenario) => {
-  const result = calculateCrossTrackError(
+  const result = calculateCrossTrack(
     scenario.start.lat, scenario.start.lon,
     scenario.end.lat, scenario.end.lon,
     scenario.point.lat, scenario.point.lon
@@ -60,8 +60,8 @@ scenarios.forEach((scenario) => {
 
   console.log('---');
   console.log(`Scenario: ${scenario.name}`);
-  console.log(`Cross-Track Distance: ${result.crossTrackErrorDistanceKM.toFixed(2)} km`);
-  console.log(`Cross-Track Direction: ${result.crossTrackDirection}`);
-  console.log(`Along-Track Distance: ${result.alongTrackDistance.toFixed(2)} km`);
-  console.log(`Path Bearing: ${result.crossTrackBearing.toFixed(2)} degrees`);
+  console.log(`Cross-Track Distance: ${result.xtd.toFixed(2) * 1000} m`);
+  console.log(`Along-Track Distance: ${result.atd.toFixed(2) * 1000} m`);
+  console.log(`Closest Point on Track: { Lat: ${result.closestPoint.lat.toFixed(6)}, Lon: ${result.closestPoint.lon.toFixed(6)} }`);
+
 });

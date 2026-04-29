@@ -6,7 +6,7 @@ chai.use(chaiAlmost());
 
 const { assert, expect } = chai;
 
-import { calculateDistance, calculateBearing, normalizeBearing, R } from '../lib/nav.js';
+import { calculateDistance, calculateBearing, calculateDestination, normalizeBearing, R } from '../lib/nav.js';
 
 const distanceTolerance = 0.003; // 3%
 const earthCircumference = 2 * Math.PI * R
@@ -166,7 +166,6 @@ describe('calculateDistance function', () => {
   });
 })
 
-
 describe('calculateBearing function', () => {
   const tolerance = 0.1;
 
@@ -196,4 +195,44 @@ test("normalizeBearing", (t) => {
   tests.forEach(({ input, expected }) => {
     assert.equal(normalizeBearing(input), expected);
   });
+})
+
+describe('', () => {
+  const tests = [
+    // 1. Basic Cardinal Directions from a mid-latitude point
+    { name: "North from NYC (100km)", start: { lat: 40.7128, lon: -74.0060 }, bearing: 0, distance: 100, expected: { lat: 41.6115, lon: -74.0060 } },
+    { name: "East from NYC (100km)", start: { lat: 40.7128, lon: -74.0060 }, bearing: 90, distance: 100, expected: { lat: 40.7128, lon: -72.7844 } },
+    { name: "South from NYC (100km)", start: { lat: 40.7128, lon: -74.0060 }, bearing: 180, distance: 100, expected: { lat: 39.8140, lon: -74.0060 } },
+    { name: "West from NYC (100km)", start: { lat: 40.7128, lon: -74.0060 }, bearing: 270, distance: 100, expected: { lat: 40.7128, lon: -75.2276 } },
+
+    // 2. Movement at the Equator (simple case)
+    { name: "Equator East (500km)", start: { lat: 0, lon: 0 }, bearing: 90, distance: 500, expected: { lat: 0, lon: 4.4921 } },
+    { name: "Equator West (500km)", start: { lat: 0, lon: 0 }, bearing: 270, distance: 500, expected: { lat: 0, lon: -4.4921 } },
+
+    // 3. Movement towards and across the North Pole
+    { name: "To North Pole (from 85N, 0E)", start: { lat: 85, lon: 0 }, bearing: 0, distance: 556, expected: { lat: 90.0000, lon: 0.0000 } }, // ~300nm (555.6km)
+    { name: "Across North Pole", start: { lat: 89.9, lon: 0 }, bearing: 0, distance: 20, expected: { lat: 89.8983, lon: 180.0000 } }, // Crosses pole, longitude flips
+
+    // 4. Movement near and across the Anti-Meridian (180th longitude)
+    { name: "Cross Anti-Meridian East", start: { lat: 0, lon: 179.5 }, bearing: 90, distance: 100, expected: { lat: 0.0, lon: -179.5921 } }, // 179.5E + 100km East -> 179.59W
+    { name: "Cross Anti-Meridian West", start: { lat: 0, lon: -179.5 }, bearing: 270, distance: 100, expected: { lat: 0.0, lon: 179.5921 } }, // 179.5W + 100km West -> 179.59E
+
+    // 5. Long Distance Travel (NYC towards a point in Europe)
+    // Verified expected end point via external calculator for accuracy
+    { name: "NYC to approx London direction (5000km)", start: { lat: 40.7128, lon: -74.0060 }, bearing: 51.84, distance: 5000, expected: { lat: 50.1388, lon: -14.6467 } },
+  ];
+
+  describe('calculateBearing function', () => {
+  const tolerance = 0.01;
+
+  tests.forEach(({ name, start, bearing, distance, expected }) => {
+    it(name, () => {
+      const result = calculateDestination(start.lat, start.lon, bearing, distance);
+      // expect(result.lat).to.be.almost(expected.lat, tolerance);
+      expect(result.lat).to.be.almost(expected.lat, 0.001);
+      // expect(result.lon).to.be.almost(expected.lon, tolerance);
+      expect(result.lon).to.be.almost(expected.lon, tolerance);
+    });
+  });
+})
 })
